@@ -21,10 +21,7 @@ pub struct CauchyFVM {
     mu: f64,            // Second Lamé coefficient
     
     // precomputed D_0 matrix inverses for all nodes and their elements
-    inv_d0: Vec<Vec<Array2<f64>>>,
-    
-    // Current stress tensors for all nodes and their elements
-    //stress_tensors: Vec<Vec<Array2<f64>>>,
+    inv_d0: Vec<Vec<Array2<f64>>>, 
     
     // Holds current velocity for each node
     velocities: Array2<f64>,
@@ -213,5 +210,34 @@ impl CauchyFVM {
             inv_d0.push(inv_d0_elements); // append all D_0^{-1} for the elements of this node
         }
         inv_d0
+    }
+}
+
+pub struct CauchyFEM {
+    num_nodes: usize,
+    pub sim_mesh: TriangleMesh,
+    
+    // perhaps use an array holding each element?
+
+    t: f64, // current time
+    dt: f64, // delta time
+    
+    // material parameters
+    young_modulus: f64, // Young's modulus, E
+    nu: f64,            // Poisson ratio
+    rho: f64,           // material density
+    lambda: f64,        // First Lamé coefficient
+    mu: f64,            // Second Lamé coefficient
+    
+    // precomputed D_0 matrix inverses for all nodes and their elements
+    inv_d0: Vec<Vec<Array2<f64>>>, 
+    
+    // Holds current velocity for each node
+    velocities: Array2<f64>,
+}
+
+impl CauchyFEM {
+    pub fn new(mesh: &TriangleMesh) -> () {
+        
     }
 }

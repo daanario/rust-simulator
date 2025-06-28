@@ -25,11 +25,11 @@ fn main() -> glib::ExitCode {
         // create main window
         let window = ApplicationWindow::builder().
             application(app).
-            default_width(800).
-            default_height(600).
+            default_width(640).
+            default_height(480).
             title("Hello World!").
             build();
-        let paintable = Paintable::new((800,600)); 
+        let paintable = Paintable::new((640,480)); 
         let image = gtk::Picture::for_paintable(&paintable);
         window.set_child(Some(&image));
         
