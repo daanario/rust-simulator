@@ -44,16 +44,20 @@ impl CauchyFVM {
         let dt = 0.001;
 
         // set material parameters (hardcoded for now)
-        let young_modulus = 10e5;
-        let nu = 0.3;
-        let rho = 1000.0;
+        //let young_modulus = 10e5;
+        //let nu = 0.3;
+        //let rho = 1000.0;
+        let young_modulus = 0.01e9;
+        let nu = 0.48;
+        let rho = 1050.0;
+
         let lambda = (young_modulus * nu) / ((1.0+nu)*(1.0-2.0*nu));
         let mu = young_modulus / (2.0 * (1.0+nu));
         
-        //let inv_d0 = Vec::<Vec<Array2<f64>>>::new();
+        // precompute (D_0)^{-1} 
         let inv_d0 = Self::precompute_d0_invs(num_nodes, &sim_mesh, &control_volumes);
 
-        //let stress_tensors = Vec::<Vec<Array2<f64>>>::new();
+        // initial velocity is (0,0) for all nodes
         let mut velocities = Array2::<f64>::zeros((num_nodes, 2));
 
         CauchyFVM {
@@ -142,7 +146,7 @@ impl CauchyFVM {
             
             let mut traction_force = Array1::<f64>::zeros(2);
             if *&self.sim_mesh.vertices[[node_idx, 0]] > 2.99 { // hardcoded traction boundary
-                let force_array = array![0.0, -8e4] * cv.area;
+                let force_array = array![0.0, -10e4] * cv.area;
                 traction_force.assign(&force_array);  
             }
             let add_row = &total_forces.row(node_idx) + traction_force + elastic_forces.row(node_idx);
