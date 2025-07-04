@@ -1,5 +1,5 @@
 # rust-simulator
-Simple project for learning about Rust
+Simple 2D simulator project for learning about Rust
 
 ## Dependencies
 GTK 4.x
