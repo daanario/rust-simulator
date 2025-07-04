@@ -3,6 +3,7 @@ Simple project for learning about Rust
 
 ## Dependencies
 GTK 4.x
+
 Rust 1.87+
 
 ## Clone and Compile (Linux only for now)
