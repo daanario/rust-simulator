@@ -1,75 +1,76 @@
-use std::error::Error;
-
-use gtk4 as gtk;
-use gtk::prelude::*;
-use gtk::{glib, Application, ApplicationWindow};
-use plotters_gtk4::Paintable;
-
-mod plotting;
 mod mesh;
 mod cv;
-mod simulator;
+mod plotting;
+mod sim;  
+mod window;
 
-use glib::source::timeout_add_local;
-use std::cell::RefCell;
-use std::rc::Rc;
-//use glib::Continue;
-//use crate::glib::ControlFlow::Continue;
+use crate::mesh::TriangleMesh;
+use crate::sim::cauchy_fvm::CauchyFVM;
+use std::thread;
+use std::time::Duration;
+use std::sync::{Arc, Mutex};
 
-fn main() -> glib::ExitCode {   
-    let app = Application::builder().
-        application_id("org.example.HelloWorld").
-        build();
+use ndarray::array;
 
-    app.connect_activate(|app| {
-        // create main window
-        let window = ApplicationWindow::builder().
-            application(app).
-            default_width(640).
-            default_height(480).
-            title("Hello World!").
-            build();
-        let paintable = Paintable::new((640,480)); 
-        let image = gtk::Picture::for_paintable(&paintable);
-        window.set_child(Some(&image));
-        
-        // Create triangle mesh
-        let tmesh = mesh::TriangleMesh::new(6.0, 2.0, (12, 4));
-        
-        // Create refcell simulator
-        let sim = Rc::new(RefCell::new(simulator::CauchyFVM::new(&tmesh)));
-        
-        {
-            let paintable = paintable.clone();
-            let sim = sim.clone();
-            
-            glib::idle_add_local(move || {
-                sim.borrow_mut().update();
-                plotting::draw_triangle_mesh_on_area(&sim.borrow().sim_mesh, &paintable);
-                glib::ControlFlow::Continue
-            });
+fn main() -> () { 
+    let tmesh = TriangleMesh::new(6.0, 2.0, (12, 4));
+    let sim = Arc::new(Mutex::new(CauchyFVM::new(&tmesh, "rubber", 6e-4)));
+    // thread loop
+    let sim_thread = sim.clone();
+    thread::spawn(move || {
+        let mut secs_5 = false;
+        let mut secs_10 = false;
+        let mut secs_15 = false;
+        let mut secs_20 = false;
 
-            // timed intervals
-            /*
-            glib::timeout_add_local(std::time::Duration::from_millis(25), move || {
-                sim.borrow_mut().update();
-                plotting::draw_triangle_mesh_on_area(&sim.borrow().sim_mesh, &paintable);
-                glib::ControlFlow::Continue
-            });
-            */
+        loop {
+            {
+                let mut sim = sim_thread.lock().unwrap();
+                sim.update();
+                if sim.t > 5.0 && !secs_5 {
+                    sim.set_immovable_boundary("leftright");
+                    sim.set_traction_boundary("down");
+                    sim.set_traction_force(array![0.0, -1e6]);
+                    secs_5 = true;
+                }
+                if sim.t > 10.0 && !secs_10 {
+                    sim.set_immovable_boundary("left");
+                    sim.set_traction_boundary("right");
+                    sim.set_traction_force(array![0.0, 1e5]);
+                    secs_10 = true;
+                }
+                if sim.t > 15.0 && !secs_15 {
+                    sim.set_immovable_boundary("leftright");
+                    sim.set_traction_boundary("up");
+                    sim.set_traction_force(array![0.0, 1e6]);
+                    secs_15 = true;
+                }
+                if sim.t > 20.0 && !secs_20 {
+                    sim.set_immovable_boundary("left");
+                    sim.set_traction_boundary("right");
+                    sim.set_traction_force(array![0.0, -1e5]);
+                    secs_20 = true;
+                }
+
+
+            }
+            std::thread::sleep(Duration::from_nanos(1)); 
         }
-
-        // show window
-        window.present();
-    }); 
+    });
     
-    app.run()
+    //window::create_sim_window();
+    window::create_sim_window_threaded(sim);
+    ()
     
-    // create control volume for node 30
-    //let control_volume = cv::MedianCentroidControlVolume::new(30, &tmesh);
-
-    // plot and control volume
-    //plotting::plot_triangle_mesh_with_cv(&tmesh, &control_volume, "mesh.png") 
-    
+    // Benchmarking code
+    // Create triangle mesh
+    //let tmesh = TriangleMesh::new(6.0, 2.0, (12, 4));
+        
+    // Create FVM simulator
+    //let mut sim = CauchyFVM::new(&tmesh); 
+    //sim.benchmark(5000); 
+ 
+    // plot mesh if we want
+    //plotting::plot_triangle_mesh(&sim.sim_mesh, "mesh.png"); 
 }
 

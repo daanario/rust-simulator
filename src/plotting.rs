@@ -2,13 +2,10 @@ use std::error::Error;
 use crate::mesh::TriangleMesh;
 use crate::cv::MedianCentroidControlVolume;
 use plotters::prelude::*;
+use plotters::prelude::full_palette::PINK; 
 
-use gtk4 as gtk;
-use gtk::prelude::*;
-use gtk::{glib, Application, ApplicationWindow};
 use plotters_gtk4::Paintable;
 use plotters_gtk4::PaintableBackend;
-use gtk::DrawingArea;
 
 pub fn plot_triangle_mesh(mesh: &TriangleMesh, filename: &str) -> Result<(), Box<dyn Error>> {
     let root = BitMapBackend::new(filename, (600,400)).into_drawing_area();
@@ -21,10 +18,6 @@ pub fn plot_triangle_mesh(mesh: &TriangleMesh, filename: &str) -> Result<(), Box
     chart.configure_mesh().draw()?;
     
     for tri in mesh.triangles.outer_iter() {
-        //let i = tri[0] as usize;
-        //let j = tri[1] as usize;
-        //let k = tri[2] as usize;
-
         let triangle = vec![
             (mesh.vertices[[tri[0], 0]], mesh.vertices[[tri[0], 1]]),
             (mesh.vertices[[tri[1], 0]], mesh.vertices[[tri[1], 1]]),
@@ -181,17 +174,18 @@ pub fn plot_triangle_mesh_with_cv(
     Ok(())
 }
 
-pub fn draw_triangle_mesh_on_area(mesh: &TriangleMesh, paintable: &Paintable) {
+pub fn draw_triangle_mesh_on_area(mesh: &TriangleMesh, paintable: &Paintable) -> () {
     let backend = PaintableBackend::new(paintable);
     let root = backend.into_drawing_area();
     root.fill(&WHITE).unwrap();
 
     let mut chart = ChartBuilder::on(&root)
-        .caption("Mesh", ("sans-serif", 12))
-        .build_cartesian_2d(-6.0..6.0, -4.0..4.0)
+        .caption("Beam mesh", ("sans-serif", 12))
+        .build_cartesian_2d(-3.1..6.0, -4.0..4.0)
         .unwrap();
-
-    chart.configure_mesh().draw().unwrap();
+    
+    // draw a background grid
+    //chart.configure_mesh().draw().unwrap();
 
     for tri in mesh.triangles.outer_iter() {
         let triangle = vec![
@@ -202,7 +196,7 @@ pub fn draw_triangle_mesh_on_area(mesh: &TriangleMesh, paintable: &Paintable) {
         ];
 
         chart
-            .draw_series(std::iter::once(PathElement::new(triangle, &BLACK)))
+            .draw_series(std::iter::once(PathElement::new(triangle, &PINK)))
             .unwrap();
     }
 
