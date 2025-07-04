@@ -22,6 +22,10 @@ fn main() -> () {
         let mut secs_10 = false;
         let mut secs_15 = false;
         let mut secs_20 = false;
+        let mut secs_25 = false;
+        let mut secs_30 = false;
+        let mut secs_35 = false;
+        let mut secs_40 = false;
 
         loop {
             {
@@ -30,29 +34,51 @@ fn main() -> () {
                 if sim.t > 5.0 && !secs_5 {
                     sim.set_immovable_boundary("leftright");
                     sim.set_traction_boundary("down");
-                    sim.set_traction_force(array![0.0, -1e6]);
+                    sim.set_traction_force(array![0.0, -5e5]);
                     secs_5 = true;
                 }
                 if sim.t > 10.0 && !secs_10 {
-                    sim.set_immovable_boundary("left");
-                    sim.set_traction_boundary("right");
-                    sim.set_traction_force(array![0.0, 1e5]);
+                    sim.set_immovable_boundary("leftright");
+                    sim.set_traction_boundary("down");
+                    sim.set_traction_force(array![0.0, 0.0]);
                     secs_10 = true;
                 }
                 if sim.t > 15.0 && !secs_15 {
-                    sim.set_immovable_boundary("leftright");
-                    sim.set_traction_boundary("up");
-                    sim.set_traction_force(array![0.0, 1e6]);
+                    sim.set_immovable_boundary("left");
+                    sim.set_traction_boundary("right");
+                    sim.set_traction_force(array![0.0, 1e4]);
                     secs_15 = true;
                 }
                 if sim.t > 20.0 && !secs_20 {
-                    sim.set_immovable_boundary("left");
-                    sim.set_traction_boundary("right");
-                    sim.set_traction_force(array![0.0, -1e5]);
+                    sim.set_immovable_boundary("leftright");
+                    sim.set_traction_boundary("down");
+                    sim.set_traction_force(array![0.0, 0.0]);
                     secs_20 = true;
                 }
-
-
+                if sim.t > 25.0 && !secs_25 {
+                    sim.set_immovable_boundary("left");
+                    sim.set_traction_boundary("right");
+                    sim.set_traction_force(array![0.0, 1e5]);
+                    secs_25 = true;
+                }
+                if sim.t > 30.0 && !secs_30 {
+                    sim.set_immovable_boundary("leftright");
+                    sim.set_traction_boundary("up");
+                    sim.set_traction_force(array![0.0, 0.0]);
+                    secs_30 = true;
+                } 
+                if sim.t > 35.0 && !secs_35 {
+                    sim.set_immovable_boundary("left");
+                    sim.set_traction_boundary("right");
+                    sim.set_traction_force(array![1e5, 0.0]);
+                    secs_35 = true;
+                }
+                if sim.t > 40.0 && !secs_40 {
+                    sim.set_immovable_boundary("left");
+                    sim.set_traction_boundary("right");
+                    sim.set_traction_force(array![0.0, 0.0]);
+                    secs_40 = true;
+                }
             }
             std::thread::sleep(Duration::from_nanos(1)); 
         }
