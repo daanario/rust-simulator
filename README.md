@@ -14,4 +14,4 @@ git clone https://github.com/daanario/rust-simulator && cd rust-simulator
 cargo build --release
 ```
 
-Compilation takes around 10 minutes on my machine.
+First compilation takes around 10 minutes on my machine, but is faster afterwards due to incremental compilation.
