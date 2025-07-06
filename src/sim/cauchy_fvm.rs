@@ -31,7 +31,7 @@ pub struct CauchyFVM {
     control_volumes: Vec<MedianCentroidControlVolume>, 
     pub t: f64, // current time
     dt: f64, // delta time
-    
+
     // material parameters  
     material: Material,
     lambda: f64,        // First Lamé coefficient
@@ -200,11 +200,18 @@ impl CauchyFVM {
                 let cv = &self.control_volumes[node_idx];
 
                 let mut traction_force = Array1::<f64>::zeros(2); 
+                let mut penalty_force = Array1::<f64>::zeros(2); 
                 if self.traction_boundary.contains(&node_idx) {
                     let force_array = &self.traction_force_vector * cv.area;
                     traction_force.assign(&force_array);  
-                } 
-                &elastic_forces.row(node_idx) + &traction_force 
+                }
+                if self.sim_mesh.vertices[[node_idx, 1]] < -3.5 {
+                    let node_pos = array![0.0, self.sim_mesh.vertices[[node_idx, 1]]];
+                    let penetration = -1.0 * node_pos;
+                    penalty_force = 1e5 * penetration * cv.area; // stiffness * penetration
+                }
+                let gravity = array![0.0, -9.8e2] * cv.area;
+                &elastic_forces.row(node_idx) + &traction_force + &gravity + &penalty_force
             })
             .collect();
         
@@ -384,7 +391,7 @@ impl CauchyFVM {
 
         let mut chart = ChartBuilder::on(&root)
             .caption(format!("Beam mesh, t={time:.*}s", 3, time=self.t), ("sans-serif", 12, &WHITE))
-            .build_cartesian_2d(-3.1..6.0, -4.0..4.0)
+            .build_cartesian_2d(-4.0..6.0, -4.0..4.0)
             .unwrap();
          
         let mesh = &self.sim_mesh;
@@ -465,7 +472,11 @@ impl CauchyFVM {
                     ThinArrow::new((x, y), (x + dx, y + dy), &RED)
                 }))
                 .unwrap();
-    
+        
+        // draw floor
+        let x_values = vec![-6.0, 6.0];
+        chart.draw_series(LineSeries::new(x_values.into_iter().map(|x| (x, -3.5)), &WHITE)).unwrap();
+
         root.present().unwrap();
     }
 }

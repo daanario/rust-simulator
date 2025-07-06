@@ -62,7 +62,7 @@ pub fn create_sim_window() -> glib::ExitCode {
         window.set_child(Some(&image));
         
         // Create triangle mesh
-        let tmesh = TriangleMesh::new(6.0, 2.0, (12, 4));
+        let tmesh = TriangleMesh::new_beam(6.0, 2.0, (12, 4));
         
         // Create refcell simulator
         let sim = Rc::new(RefCell::new(CauchyFVM::new(&tmesh, "rubber", 1e-3)));

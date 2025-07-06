@@ -1,5 +1,9 @@
 use ndarray::prelude::*;
 use ndarray::{Array1, Array2};
+use plotters::prelude::*;
+use std::f64::consts::PI;
+use std::collections::HashMap;
+use delaunator::{triangulate, Point};
 
 #[derive(Clone)]
 pub struct TriangleMesh {
@@ -12,9 +16,9 @@ pub struct TriangleMesh {
 }
 
 impl TriangleMesh {
-    pub fn new(width : f64, height : f64, shape : (usize, usize)) -> TriangleMesh {
+    pub fn new_beam(width : f64, height : f64, shape : (usize, usize)) -> TriangleMesh {
         let (vertices, triangles) = Self::make_beam_mesh(width, height, shape);
-       
+         
         let areas = Self::compute_triangle_areas(&vertices, &triangles);
         
         // verify that all areas are positive
@@ -27,6 +31,116 @@ impl TriangleMesh {
         TriangleMesh {vertices, triangles, areas, vertex_neighbor_tris}
     }
     
+    pub fn new_ball(res: usize) -> TriangleMesh {
+        let (vertices, triangles) = Self::make_circle_mesh(res);
+
+        let areas = Self::compute_triangle_areas(&vertices, &triangles);
+        
+        // verify that all areas are positive
+        if areas.iter().any(|&a| a <= 0.0) {
+            panic!("Could not create mesh! Triangle with negative area found");
+        }
+        
+        let vertex_neighbor_tris = Self::compute_vertex_triangle_adjacency(&vertices, &triangles);
+
+        TriangleMesh {vertices, triangles, areas, vertex_neighbor_tris}
+    }
+
+    fn make_circle_mesh(res: usize) -> (Array2<f64>, Array2<usize>) {
+        // idea: https://stackoverflow.com/questions/53406534/procedural-circle-mesh-with-uniform-faces 
+        let mut vertices = Vec::<Array1<f64>>::new();
+        let mut triangles = Vec::<Array1<usize>>::new();
+        
+        let d: f64 = 1.0 / (res as f64);
+        // build vertices
+        vertices.push(array![0.0, 0.0]); // start with center vertex at (0,0)
+        
+        for circle in 0..res {
+            let angle_step = (3.14 * 2.0) / ((circle as f64 + 1.0) * 6.0);
+            for point in 0..((circle+1)*6) {
+                vertices.push(array![
+                    (angle_step * (point as f64)).cos() * d * ((circle as f64) + 1.0),
+                    (angle_step * (point as f64)).sin() * d * ((circle as f64) + 1.0)]);
+            }
+        }
+        
+        // convert vertices to Array2
+        let vertices = Array2::from_shape_vec((vertices.len(), 2),
+        vertices.into_iter().flat_map(|row| row.into_iter()).collect())
+            .unwrap();
+
+        // build triangles
+        for circle in 0..res {
+            let c = circle as isize;
+            let mut other = 0;
+            for point in 0..((circle+1)*6) {
+                if (point % (circle+1) != 0) {
+                    // Create 2 triangles
+                    let mut tri = vec![
+                        Self::get_point_index(c-1, other+1),
+                        Self::get_point_index(c-1, other),
+                        Self::get_point_index(c, point)
+                    ];
+                    Self::make_ccw(&vertices, tri.clone()); 
+                    triangles.push(array![tri[0], tri[1], tri[2]]);
+                    let mut tri = vec![
+                        Self::get_point_index(c, point),
+                        Self::get_point_index(c, point+1),
+                        Self::get_point_index(c-1, other+1)
+                    ];
+                    Self::make_ccw(&vertices, tri.clone()); 
+                    triangles.push(array![tri[0], tri[1], tri[2]]); 
+                    other += 1;
+                } else {
+                    // Create 1 inverse triangle
+                    let mut tri = vec![
+                        Self::get_point_index(c, point),
+                        Self::get_point_index(c, point+1),
+                        Self::get_point_index(c-1, other)
+                    ];
+                    let tri = Self::make_ccw(&vertices, tri.clone());
+                    triangles.push(array![tri[0], tri[1], tri[2]]); 
+                }
+            } 
+        }
+        // convert triangles to Array2
+        let triangles = Array2::from_shape_vec((triangles.len(), 3),
+        triangles.into_iter().flat_map(|row| row.into_iter()).collect())
+            .unwrap();
+
+        (vertices, triangles)
+    }
+    
+    fn signed_area(
+        vertices: &Array2<f64>,
+        i0: usize,
+        i1: usize,
+        i2: usize,
+    ) -> f64 { 
+        let xi = vertices[[i0, 0]];
+        let yi = vertices[[i0, 1]];
+        let xj = vertices[[i1, 0]];
+        let yj = vertices[[i1, 1]];
+        let xk = vertices[[i2, 0]];
+        let yk = vertices[[i2, 1]];
+
+        // ½[(x1-x0)*(y2-y0) - (x2-x0)*(y1-y0)]
+        ((xj - xi)*(yk - yi) - (xk - xi)*(yj - yi)) * 0.5
+
+    }
+    fn make_ccw(
+        vertices: &Array2<f64>,
+        tri: Vec<usize>,
+    ) -> Vec<usize> {
+        if Self::signed_area(vertices, tri[0], tri[1], tri[2]) <= 0.0 {
+            println!("new tri: {:?}", tri);
+            return vec![tri[0], tri[2], tri[1]]
+        } else {
+            return tri
+        }
+
+    }
+
     fn make_beam_mesh(width : f64, height : f64, shape : (usize, usize)) -> (Array2<f64>, Array2<usize>) {
         if width < 0.0 || height < 0.0 { panic!("Could not create mesh! Width/height cannot be negative") }
         let x0 = -width/2.0;
@@ -70,26 +184,12 @@ impl TriangleMesh {
     }
     
     fn compute_triangle_areas(vertices: &Array2<f64>, triangles: &Array2<usize>) -> Array1<f64> {
-        let mut areas = Array1::<f64>::zeros(triangles.nrows());
-
-        for (e, tri) in triangles.outer_iter().enumerate() {
-            let xi = vertices[[tri[0], 0]];
-            let xj = vertices[[tri[1], 0]];
-            let xk = vertices[[tri[2], 0]];
-            let yi = vertices[[tri[0], 1]];
-            let yj = vertices[[tri[1], 1]];
-            let yk = vertices[[tri[2], 1]];
-   
-            let xkj = &xk - &xj;
-            let ykj = &yk - &yj;
-            let xij = &xi - &xj;
-            let yij = &yi - &yj;
-
-            let area = (xkj * yij - xij * ykj) / 2.0;
-
-            areas[[e]] = area;
-        }
-        areas
+        triangles
+            .outer_iter()
+            .map(|tri| {
+                Self::signed_area(vertices, tri[0], tri[1], tri[2])
+            })
+            .collect()
     }
     fn compute_vertex_triangle_adjacency(vertices: &Array2<f64>, triangles: &Array2<usize>) -> Vec<Vec<usize>> {
         let vertex_count: usize = vertices.shape()[0];
@@ -102,5 +202,12 @@ impl TriangleMesh {
         }
         vertex_neighbor_tris
     }
-
+    
+    fn get_point_index(circle: isize, point: usize) -> usize {
+        if circle < 0 { return 0; }
+        //println!("circle {}", circle);
+        let c = circle as usize;
+        let x = point % ((c + 1) * 6);
+        return (3 * c * (c + 1) + x + 1);
+    }
 }
