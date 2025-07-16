@@ -205,13 +205,15 @@ impl CauchyFVM {
                     let force_array = &self.traction_force_vector * cv.area;
                     traction_force.assign(&force_array);  
                 }
-                if self.sim_mesh.vertices[[node_idx, 1]] < -3.5 {
+                /*
+                if self.sim_mesh.vertices[[node_idx, 1]] < -500.5 {
                     let node_pos = array![0.0, self.sim_mesh.vertices[[node_idx, 1]]];
                     let penetration = -1.0 * node_pos;
-                    penalty_force = 1e5 * penetration * cv.area; // stiffness * penetration
+                    penalty_force = 1e7 * penetration * cv.area; // stiffness * penetration
                 }
+                */
                 let gravity = array![0.0, -9.8e2] * cv.area;
-                &elastic_forces.row(node_idx) + &traction_force + &gravity + &penalty_force
+                &elastic_forces.row(node_idx) + &traction_force + &gravity// + &penalty_force
             })
             .collect();
         
@@ -391,7 +393,7 @@ impl CauchyFVM {
 
         let mut chart = ChartBuilder::on(&root)
             .caption(format!("Beam mesh, t={time:.*}s", 3, time=self.t), ("sans-serif", 12, &WHITE))
-            .build_cartesian_2d(-4.0..6.0, -4.0..4.0)
+            .build_cartesian_2d(-40.0..60.0, -40.0..40.0)
             .unwrap();
          
         let mesh = &self.sim_mesh;

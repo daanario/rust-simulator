@@ -84,7 +84,43 @@ pub fn beam_example1() -> () {
 
 pub fn ball_example1() -> () {
     let tmesh = TriangleMesh::new_ball(5);
-    let sim = Arc::new(Mutex::new(CauchyFVM::new(&tmesh, "rubber", 1e-4)));
+    let sim = Arc::new(Mutex::new(CauchyFVM::new(&tmesh, "rubber", 7e-4)));
+    // thread loop
+    let sim_thread = sim.clone();
+    thread::spawn(move || {
+        let mut secs_5 = false;
+        let mut secs_5_5 = false;
+
+        loop {
+            {
+                let mut sim = sim_thread.lock().unwrap();
+                sim.update();
+                /*
+                if sim.t > 2.0 && !secs_5 {
+                    sim.set_immovable_boundary("leftright");
+                    sim.set_traction_boundary("down");
+                    sim.set_traction_force(array![0.0, 0.0]);
+                    secs_5 = true;
+                }
+                if sim.t > 2.1 && !secs_5_5 {
+                    sim.set_immovable_boundary("leftright");
+                    sim.set_traction_boundary("down");
+                    sim.set_traction_force(array![0.0, 0.0]);
+                    secs_5_5 = true;
+                }
+                */
+            }
+            std::thread::sleep(Duration::from_nanos(1)); 
+        }
+    });
+ 
+    window::create_sim_window_threaded(sim);
+}
+
+pub fn beam_example2() -> () {
+    // LARGE beam
+    let tmesh = TriangleMesh::new_beam(60.0, 20.0, (12, 4));
+    let sim = Arc::new(Mutex::new(CauchyFVM::new(&tmesh, "rubber", 1e-5))); 
     // thread loop
     let sim_thread = sim.clone();
     thread::spawn(move || {

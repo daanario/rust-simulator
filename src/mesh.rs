@@ -3,7 +3,7 @@ use ndarray::{Array1, Array2};
 use plotters::prelude::*;
 use std::f64::consts::PI;
 use std::collections::HashMap;
-use delaunator::{triangulate, Point};
+//use delaunator::{triangulate, Point};
 
 #[derive(Clone)]
 pub struct TriangleMesh {
@@ -210,4 +210,5 @@ impl TriangleMesh {
         let x = point % ((c + 1) * 6);
         return (3 * c * (c + 1) + x + 1);
     }
+
 }
